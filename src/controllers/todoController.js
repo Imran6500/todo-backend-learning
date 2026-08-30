@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const sendResponse = require("../utils/response");
 const Todo = require("../models/todoModel");
+const bcrypt = require("bcryptjs");
 
 const getTodos = async (req, res, next) => {
   try {
@@ -60,23 +61,33 @@ const getTodos = async (req, res, next) => {
 
 const createTodo = async (req, res, next) => {
   try {
-    if (req.body.title == null || req.body.title.trim() === "") {
-      return sendResponse(res, 400, false, "Title is required");
-    }
-
-    if (
-      req.body.completed !== undefined &&
-      typeof req.body.completed !== "boolean"
-    ) {
-      return sendResponse(res, 400, false, "Complete must be a boolean");
-    }
-
     const todo = await Todo.create({
       title: req.body.title,
       completed: req.body.completed,
+      user: req.user.userId
     });
 
     sendResponse(res, 201, true, "Todo created successfully", todo);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const patchTodo = async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return sendResponse(res, 400, false, "Invalid ID");
+    }
+    const updatedTodo = await Todo.findByIdAndUpdate(id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+    if (!updatedTodo) {
+      return sendResponse(res, 404, false, "Todo not found");
+    }
+
+    sendResponse(res, 200, true, "Todo updated successfully", updatedTodo);
   } catch (error) {
     next(error);
   }
@@ -89,14 +100,6 @@ const updateTodo = async (req, res, next) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return sendResponse(res, 400, false, "Invalid Id");
     }
-
-    if (
-      req.body.completed !== undefined &&
-      typeof req.body.completed !== "boolean"
-    ) {
-      return sendResponse(res, 400, false, "Complete must be boolean");
-    }
-
     const updatedTodo = await Todo.findByIdAndUpdate(
       id,
       {
@@ -108,11 +111,9 @@ const updateTodo = async (req, res, next) => {
         runValidators: true,
       },
     );
-
     if (!updatedTodo) {
       return sendResponse(res, 404, false, "Todo not found");
     }
-
     sendResponse(res, 200, true, "Todo updated successfully", updatedTodo);
   } catch (error) {
     next(error);
@@ -157,10 +158,13 @@ const deleteTodo = async (req, res, next) => {
   }
 };
 
+
+
 module.exports = {
   getTodos,
   createTodo,
   updateTodo,
   deleteTodo,
   getTodoById,
+  patchTodo,
 };
