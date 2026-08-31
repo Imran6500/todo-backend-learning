@@ -5,7 +5,9 @@ const bcrypt = require("bcryptjs");
 
 const getTodos = async (req, res, next) => {
   try {
-    let filter = {};
+    let filter = {
+      user: req.user.userId,
+    };
     const completed = req.query.completed;
 
     if (completed !== undefined) {
@@ -64,7 +66,7 @@ const createTodo = async (req, res, next) => {
     const todo = await Todo.create({
       title: req.body.title,
       completed: req.body.completed,
-      user: req.user.userId
+      user: req.user.userId,
     });
 
     sendResponse(res, 201, true, "Todo created successfully", todo);
@@ -79,10 +81,17 @@ const patchTodo = async (req, res, next) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return sendResponse(res, 400, false, "Invalid ID");
     }
-    const updatedTodo = await Todo.findByIdAndUpdate(id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    const updatedTodo = await Todo.findOneAndUpdate(
+      {
+        _id: id,
+        user: req.user.userId,
+      },
+      req.body,
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
     if (!updatedTodo) {
       return sendResponse(res, 404, false, "Todo not found");
     }
@@ -100,8 +109,11 @@ const updateTodo = async (req, res, next) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return sendResponse(res, 400, false, "Invalid Id");
     }
-    const updatedTodo = await Todo.findByIdAndUpdate(
-      id,
+    const updatedTodo = await Todo.findOneAndUpdate(
+      {
+        _id: id,
+        user: req.user.userId,
+      },
       {
         title: req.body.title,
         completed: req.body.completed,
@@ -128,7 +140,7 @@ const getTodoById = async (req, res, next) => {
       return sendResponse(res, 400, false, "Id is not valid");
     }
 
-    const todo = await Todo.findById(id);
+    const todo = await Todo.findOne({ _id: id, user: req.user.userId });
 
     if (!todo) {
       return sendResponse(res, 404, false, "Todo not found");
@@ -146,7 +158,10 @@ const deleteTodo = async (req, res, next) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return sendResponse(res, 400, false, "Invalid Id");
     }
-    const deletedTodo = await Todo.findByIdAndDelete(id);
+    const deletedTodo = await Todo.findOneAndDelete({
+      _id: id,
+      user: req.user.userId,
+    });
 
     if (!deletedTodo) {
       return sendResponse(res, 404, false, "Todo not found");
@@ -157,8 +172,6 @@ const deleteTodo = async (req, res, next) => {
     next(error);
   }
 };
-
-
 
 module.exports = {
   getTodos,
